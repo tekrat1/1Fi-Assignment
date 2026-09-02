@@ -1,23 +1,22 @@
 import { notFound } from "next/navigation";
-import { getBaseUrl } from "@/lib/baseUrl";
 import ProductView from "@/components/ProductView";
+import { getProductDetails } from "@/lib/products";
 
-async function getProduct(slug: string) {
-  const res = await fetch(`${getBaseUrl()}/api/products/${slug}`, {
-    cache: "no-store",
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error("Failed to load product");
-  const data = await res.json();
-  return data.product;
-}
+export const dynamic = "force-dynamic";
 
 export default async function ProductPage({
   params,
 }: {
   params: { slug: string };
 }) {
-  const product = await getProduct(params.slug);
+  let product = null;
+
+  try {
+    product = await getProductDetails(params.slug);
+  } catch (error) {
+    console.error(`Failed to load product ${params.slug}:`, error);
+  }
+
   if (!product) notFound();
 
   return <ProductView product={product} />;

@@ -1,133 +1,116 @@
-# Fairway — EMI Store (1Fi SDE1 Assignment)
+# Fairway — EMI Store
 
-A full-stack product page that shows smartphones with EMI plans backed by mutual funds.
-Product, pricing, image galleries and EMI data live in MongoDB and are served through Next.js
-API routes — the frontend does not contain product-specific image URLs or product records.
+A small full-stack smartphone storefront built for the 1Fi SDE1 assignment. Product data, variant pricing, product images, and EMI rules are stored in MongoDB and exposed through Next.js API routes. The React UI consumes that API data rather than keeping product records in the frontend.
 
-Live demo: _add your deployed link here_
-Demo video: _add your video link here_
+## Features
+
+- Product listing with real product images
+- Dynamic product pages using `/products/[slug]`
+- Three smartphones with multiple storage/color variants
+- Database-backed image galleries for every variant
+- Seven EMI options per variant
+- EMI amounts calculated from the selected variant price
+- Interest rate and cashback displayed per plan
+- Selectable EMI plan with a demo proceed action
+- Responsive layout for desktop and mobile
 
 ## Tech stack
 
-- **Frontend:** React (via Next.js App Router), Tailwind CSS
-- **Backend:** Next.js API routes (Node.js)
-- **Database:** MongoDB (Mongoose ODM)
+- **Frontend:** React 18, Next.js 14 App Router, Tailwind CSS
+- **Backend:** Next.js Route Handlers / Node.js
+- **Database:** MongoDB with Mongoose
+- **Language:** TypeScript
 
 ## Project structure
 
-```
+```text
 src/
   app/
-    page.tsx                     -> home page, lists all products
-    products/[slug]/page.tsx     -> dynamic product page (/products/iphone-17-pro)
-    api/products/route.ts        -> GET /api/products
-    api/products/[slug]/route.ts -> GET /api/products/:slug
-  components/ProductView.tsx     -> client component: variant + EMI plan picker
-  lib/db.ts                      -> MongoDB connection (cached for serverless)
-  lib/emi.ts                     -> EMI math (monthly amount from price + template)
-  models/Product.ts              -> Product + embedded variants schema
-  models/EmiPlanTemplate.ts      -> EMI plan rules (tenure / interest / cashback)
-scripts/seed.ts                  -> seeds 3 products (2-3 variants each) + EMI templates
+    page.tsx                         Home/product listing
+    products/[slug]/page.tsx         Dynamic product page
+    api/products/route.ts            GET /api/products
+    api/products/[slug]/route.ts     GET /api/products/:slug
+  components/
+    ProductGallery.tsx               Product image gallery
+    ProductView.tsx                  Product page state and layout
+    VariantSelectors.tsx             Color/variant selectors
+    EmiPlanList.tsx                  EMI plan picker
+  lib/
+    baseUrl.ts                       Server-side API base URL
+    db.ts                            Cached MongoDB connection
+    emi.ts                           EMI calculation
+    format.ts                        Currency formatting
+  models/
+    Product.ts                       Product and variant schema
+    EmiPlanTemplate.ts               EMI rule schema
+scripts/
+  seed.ts                            Database seed data
 ```
 
-## Setup and run instructions
+## Local setup
 
-### 1. Prerequisites
-- Node.js 18+
-- A MongoDB connection string (free tier on [MongoDB Atlas](https://www.mongodb.com/atlas) works fine)
+### Requirements
 
-### 2. Install
+- Node.js 18 or newer
+- MongoDB Atlas or another MongoDB deployment
+
+### Install dependencies
+
 ```bash
 npm install
 ```
 
-### 3. Configure environment
+### Configure MongoDB
+
+Copy the example environment file:
+
 ```bash
 cp .env.example .env
-# then edit .env and set MONGODB_URI to your connection string
 ```
 
-### 4. Seed the database
+Set the connection string in `.env`:
+
+```env
+MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/emi-store?retryWrites=true&w=majority
+```
+
+If using MongoDB Atlas, make sure your current IP address is allowed under **Network Access**.
+
+### Seed the database
+
 ```bash
 npm run seed
 ```
-This clears and repopulates the `products` and `emiplantemplates` collections with
-3 products (each with 2–3 variants) and 7 EMI plan templates (0% for 3/6/12/24
-months, 10.5% for 36/48/60 months, matching the reference design).
 
-### 5. Run locally
+The seed command creates:
+
+- 3 products
+- 7 product variants in total
+- 7 shared EMI templates
+
+### Run the application
+
 ```bash
 npm run dev
 ```
-Visit `http://localhost:3000`.
 
-### 6. Build for production
+Open `http://localhost:3000`.
+
+For a production build:
+
 ```bash
 npm run build
 npm run start
 ```
 
-## Deploying
-
-1. Push this repo to GitHub.
-2. Import it into [Vercel](https://vercel.com).
-3. Add the `MONGODB_URI` environment variable in the Vercel project settings
-   (same value as your local `.env`).
-4. Deploy. Vercel builds `npm run build` and serves the app + API routes together
-   (no separate backend deployment needed since API routes run as serverless functions).
-5. Run `npm run seed` once from your local machine (pointed at the same
-   `MONGODB_URI`) to populate the live database.
-
-## Database schema
-
-### `products` collection
-| Field       | Type              | Notes                                  |
-|-------------|-------------------|-----------------------------------------|
-| name        | String            | e.g. "iPhone 17 Pro"                    |
-| slug        | String, unique    | used for `/products/:slug` URL          |
-| brand       | String            | e.g. "Apple"                            |
-| category    | String            | e.g. "Smartphones"                      |
-| description | String            |                                          |
-| heroImage   | String (URL)      | fallback image shown on the list page   |
-| finishes    | [String]          | color/finish names                      |
-| variants    | [Variant]         | embedded sub-documents, see below       |
-
-**Variant sub-document**
-| Field        | Type   | Notes                          |
-|--------------|--------|----------------------------------|
-| variantLabel | String | e.g. "256GB Silver"              |
-| storage      | String | optional                         |
-| color        | String | optional                         |
-| mrp          | Number | list price                       |
-| price        | Number | selling price                    |
-| image        | String | primary variant image             |
-| images       | [String] | ordered gallery images for the variant |
-
-### `emiplantemplates` collection
-| Field         | Type   | Notes                                   |
-|---------------|--------|-------------------------------------------|
-| tenureMonths  | Number | e.g. 3, 6, 12, 24, 36, 48, 60              |
-| interestRate  | Number | annual %, 0 for zero-cost EMI              |
-| cashback      | Number | flat cashback in ₹, 0 if none              |
-| order         | Number | display order                              |
-
-EMI templates are shared across all products. The **monthly EMI amount is
-calculated on the fly** per variant price using simple interest:
-
-```
-totalPayable  = price + price * (interestRate / 100) * (tenureMonths / 12)
-monthlyAmount = round(totalPayable / tenureMonths)
-```
-
-This keeps EMI numbers accurate to whatever price is in the database, instead
-of hardcoding monthly figures per product.
-
-## API endpoints
+## API
 
 ### `GET /api/products`
-Returns a summary of every product for the listing page.
 
-**Example response**
+Returns the product summaries used by the home page.
+
+Example:
+
 ```json
 {
   "products": [
@@ -136,7 +119,7 @@ Returns a summary of every product for the listing page.
       "name": "iPhone 17 Pro",
       "brand": "Apple",
       "category": "Smartphones",
-      "heroImage": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-17-pro-finish-select-silver-202509?wid=1200&hei=1200&fmt=png-alpha",
+      "heroImage": "https://...",
       "variantCount": 3,
       "startingPrice": 127400
     }
@@ -145,43 +128,117 @@ Returns a summary of every product for the listing page.
 ```
 
 ### `GET /api/products/:slug`
-Returns full product details, all variants, and computed EMI plans per variant.
 
-**Example: `GET /api/products/iphone-17-pro`**
+Returns one product, its variants, database-backed image galleries, and EMI plans calculated for each variant.
+
+Example shape:
+
 ```json
 {
   "product": {
     "name": "iPhone 17 Pro",
     "slug": "iphone-17-pro",
     "brand": "Apple",
-    "category": "Smartphones",
-    "description": "Titanium design, A19 Pro chip, ...",
-    "heroImage": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-17-pro-finish-select-silver-202509?wid=1200&hei=1200&fmt=png-alpha",
-    "finishes": ["Silver", "Orange", "Deep Blue"],
     "variants": [
       {
-        "id": "665f1c...",
+        "id": "...",
         "variantLabel": "256GB Silver",
         "storage": "256GB",
         "color": "Silver",
         "mrp": 134900,
         "price": 127400,
-        "image": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-17-pro-finish-select-silver-202509?wid=1200&hei=1200&fmt=png-alpha",
-        "images": ["https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-17-pro-finish-select-silver-202509?wid=1200&hei=1200&fmt=png-alpha", "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-17-pro-finish-select-cosmicorange-202509?wid=1200&hei=1200&fmt=png-alpha", "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-17-pro-finish-select-deepblue-202509?wid=1200&hei=1200&fmt=png-alpha"],
+        "image": "https://...",
+        "images": ["https://...", "https://..."],
         "emiPlans": [
-          { "tenureMonths": 3, "interestRate": 0, "cashback": 3000, "monthlyAmount": 42467, "totalPayable": 127400 },
-          { "tenureMonths": 36, "interestRate": 10.5, "cashback": 3000, "monthlyAmount": 4295, "totalPayable": 154607 }
+          {
+            "tenureMonths": 3,
+            "interestRate": 0,
+            "cashback": 3000,
+            "monthlyAmount": 42467,
+            "totalPayable": 127400
+          }
         ]
       }
     ]
   }
 }
 ```
-`404` is returned with `{ "error": "Product not found" }` for an unknown slug.
 
-## Image data
+An unknown slug returns HTTP `404` with:
 
-Each variant stores a primary `image` plus an ordered `images` gallery array in MongoDB.
-The product detail API returns those URLs to the client, so product-specific gallery images
-are not hardcoded in `ProductView.tsx`.
+```json
+{ "error": "Product not found" }
+```
 
+## Database schema
+
+### `products`
+
+| Field | Type | Purpose |
+|---|---|---|
+| `name` | String | Product name |
+| `slug` | String, unique | Product URL slug |
+| `brand` | String | Manufacturer |
+| `category` | String | Product category |
+| `description` | String | Product description |
+| `heroImage` | String | Image used on the listing page |
+| `finishes` | String[] | Available color/finish names |
+| `variants` | Variant[] | Storage/color/pricing/image data |
+
+Each variant contains:
+
+| Field | Type | Purpose |
+|---|---|---|
+| `variantLabel` | String | Human-readable variant name |
+| `storage` | String | Storage option |
+| `color` | String | Color/finish |
+| `mrp` | Number | Listed price |
+| `price` | Number | Selling price |
+| `image` | String | Primary image |
+| `images` | String[] | Ordered gallery images |
+
+### `emiplantemplates`
+
+| Field | Type | Purpose |
+|---|---|---|
+| `tenureMonths` | Number | EMI duration |
+| `interestRate` | Number | Annual interest rate |
+| `cashback` | Number | Cashback in INR |
+| `order` | Number | Display order |
+
+## EMI calculation
+
+EMI rules are stored in MongoDB. The API calculates the amount for the selected variant price rather than storing a separate monthly payment for every product.
+
+```text
+interest = price * interestRate * tenureMonths / (100 * 12)
+totalPayable = price + interest
+monthlyAmount = round(totalPayable / tenureMonths)
+```
+
+## Image/data flow
+
+The seed script stores each variant's primary image and complete gallery in MongoDB. The product API returns those values to the client. `ProductGallery` only renders the URLs it receives from the API; it does not contain product-specific image URLs.
+
+## Deployment
+
+The application can be deployed as one Next.js project on Vercel or another platform that supports Next.js.
+
+1. Push the project to GitHub.
+2. Import the repository into the deployment platform.
+3. Add `MONGODB_URI` as a server environment variable.
+4. Deploy the project.
+5. Run `npm run seed` once against the production database.
+
+Add the final deployment and demo-video links here before submitting the assignment.
+
+## Demo checklist
+
+For the required 2–5 minute walkthrough, show:
+
+1. The product listing page.
+2. A product page with variant and gallery changes.
+3. EMI plan selection and the proceed action.
+4. `/api/products` and `/api/products/:slug` responses.
+5. MongoDB product and EMI collections.
+6. The schema and seed files.

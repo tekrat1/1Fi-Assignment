@@ -3,12 +3,13 @@ import { connectDB } from "@/lib/db";
 import Product, { type IProduct, type IVariant } from "@/models/Product";
 import type { ProductSummary } from "@/types/product";
 
-export const dynamic = "force-dynamic";
-
 type ProductSummaryDocument = Pick<
   IProduct,
   "slug" | "name" | "brand" | "category" | "heroImage" | "variants"
 >;
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function GET() {
   try {
@@ -38,7 +39,8 @@ export async function GET() {
     );
 
     return NextResponse.json({ products: summaries });
-  } catch {
+  } catch (error) {
+    console.error("GET /api/products failed:", error);
     return NextResponse.json(
       { error: "Unable to load products" },
       { status: 500 }

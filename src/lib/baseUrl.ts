@@ -1,13 +1,16 @@
 import { headers } from "next/headers";
 
-// Builds an absolute URL so server components can call our own /api routes
-// with fetch() (relative URLs don't work in server-side fetch).
-export function getBaseUrl() {
-  if (process.env.NEXT_PUBLIC_BASE_URL) {
-    return process.env.NEXT_PUBLIC_BASE_URL;
-  }
-  const h = headers();
-  const host = h.get("host");
-  const protocol = host?.startsWith("localhost") ? "http" : "https";
+export function getBaseUrl(): string {
+  const configuredUrl = process.env.NEXT_PUBLIC_BASE_URL?.trim();
+  if (configuredUrl) return configuredUrl.replace(/\/$/, "");
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) return `https://${vercelUrl}`;
+
+  const requestHeaders = headers();
+  const host = requestHeaders.get("host");
+  if (!host) throw new Error("Unable to determine the request host");
+
+  const protocol = host.startsWith("localhost") ? "http" : "https";
   return `${protocol}://${host}`;
 }

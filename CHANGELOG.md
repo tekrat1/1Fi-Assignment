@@ -28,3 +28,10 @@
 - `npm ci` was attempted, but dependency installation timed out in the execution environment.
 - `npm run build` could not be executed successfully because the timed-out install left the local `next` binary unavailable.
 - MongoDB seed/API runtime checks require the project's configured `MONGODB_URI` and were not run against the user's database.
+
+## Vercel runtime fix
+
+- Removed server-component self-fetches to the deployed `/api/products` endpoints.
+- Server-rendered pages now use shared MongoDB helpers directly.
+- This prevents Vercel HTML error pages from reaching `response.json()`, which caused `Unexpected token <` and digest `2384324333`.
+- API routes remain available for the backend/API requirement.

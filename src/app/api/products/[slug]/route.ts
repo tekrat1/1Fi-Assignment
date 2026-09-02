@@ -1,28 +1,22 @@
-import { NextResponse } from "next/server";
 import { Types } from "mongoose";
+import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import Product, { type IVariant } from "@/models/Product";
-import EmiPlanTemplate, {
-  type IEmiPlanTemplate,
-} from "@/models/EmiPlanTemplate";
 import { computeEmiPlans } from "@/lib/emi";
+import EmiPlanTemplate, { type IEmiPlanTemplate } from "@/models/EmiPlanTemplate";
+import Product, { type IProduct, type IVariant } from "@/models/Product";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
-interface ProductRouteVariant extends Omit<IVariant, "id"> {
-  _id: Types.ObjectId;
-}
+type ProductRouteVariant = Pick<
+  IVariant,
+  "variantLabel" | "storage" | "color" | "mrp" | "price" | "image" | "images"
+> & { _id: Types.ObjectId };
 
-interface ProductRouteData {
-  name: string;
-  slug: string;
-  brand: string;
-  category: string;
-  description: string;
-  heroImage: string;
-  finishes: string[];
-  variants: ProductRouteVariant[];
-}
+type ProductRouteData = Pick<
+  IProduct,
+  "name" | "slug" | "brand" | "category" | "description" | "heroImage" | "finishes"
+> & { variants: ProductRouteVariant[] };
 
 export async function GET(
   _request: Request,
@@ -31,31 +25,35 @@ export async function GET(
   try {
     await connectDB();
 
-    const product = await Product.findOne({ slug: params.slug }).lean<ProductRouteData | null>();
+    const product = await Product.findOne({ slug: params.slug })
+      .lean<ProductRouteData | null>();
 
     if (!product) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    const templates = await EmiPlanTemplate.find({})
+    const planTemplates = await EmiPlanTemplate.find({})
       .sort({ order: 1 })
+      .select("tenureMonths interestRate cashback")
       .lean<IEmiPlanTemplate[]>();
 
-    const variantsWithPlans = product.variants.map((variant) => ({
-      id: variant._id.toString(),
-      variantLabel: variant.variantLabel,
-      storage: variant.storage,
-      color: variant.color,
-      mrp: variant.mrp,
-      price: variant.price,
-      image: variant.image,
-      images:
-        variant.images.length > 0 ? variant.images : [variant.image],
-      emiPlans: computeEmiPlans(variant.price, templates),
-    }));
+    const variants = product.variants.map((variant: ProductRouteVariant) => {
+      const gallery = Array.from(
+        new Set([variant.image, ...variant.images].filter(Boolean))
+      );
+
+      return {
+        id: variant._id.toString(),
+        variantLabel: variant.variantLabel,
+        storage: variant.storage,
+        color: variant.color,
+        mrp: variant.mrp,
+        price: variant.price,
+        image: variant.image,
+        images: gallery,
+        emiPlans: computeEmiPlans(variant.price, planTemplates),
+      };
+    });
 
     return NextResponse.json({
       product: {
@@ -66,12 +64,13 @@ export async function GET(
         description: product.description,
         heroImage: product.heroImage,
         finishes: product.finishes,
-        variants: variantsWithPlans,
+        variants,
       },
     });
-  } catch {
+  } catch (error) {
+    console.error(`GET /api/products/${params.slug} failed:`, error);
     return NextResponse.json(
-      { error: "Failed to fetch product" },
+      { error: "Unable to load product" },
       { status: 500 }
     );
   }
