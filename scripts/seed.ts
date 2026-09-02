@@ -3,6 +3,12 @@ import mongoose from "mongoose";
 import Product from "../src/models/Product";
 import EmiPlanTemplate from "../src/models/EmiPlanTemplate";
 
+const MONGODB_URI = process.env.MONGODB_URI as string;
+
+if (!MONGODB_URI) {
+  console.error("MONGODB_URI is not set. Add it to .env before seeding.");
+  process.exit(1);
+}
 
 const imageUrls = {
   samsungBlack:
@@ -15,14 +21,9 @@ const imageUrls = {
     "https://www.proshop.fi/Images/915x900/3319812_3f370bc9e9d4.png",
 };
 
-const appleIphone17Image = (finish: "Silver" | "Orange" | "Deep Blue") => {
-  const finishKey = {
-    Silver: "silver",
-    Orange: "cosmicorange",
-    "Deep Blue": "deepblue",
-  }[finish];
-
-  return `https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-17-pro-finish-select-${finishKey}-202509?wid=1200&hei=1200&fmt=png-alpha`;
+const appleIphone17Image = (color: string) => {
+  const appleColor = color === "Orange" ? "cosmicorange" : color === "Deep Blue" ? "deepblue" : "silver";
+  return `https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-17-pro-finish-select-${appleColor}-202509?wid=1200&hei=1200&fmt=png-alpha`;
 };
 
 const products = [
@@ -150,29 +151,24 @@ const emiPlanTemplates = [
 ];
 
 async function seed() {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    throw new Error("MONGODB_URI is not configured. Add it to .env before seeding.");
-  }
+  await mongoose.connect(MONGODB_URI);
+  console.log("Connected to MongoDB");
 
-  try {
-    await mongoose.connect(uri);
-    console.log("Connected to MongoDB");
+  await Product.deleteMany({});
+  await EmiPlanTemplate.deleteMany({});
+  console.log("Cleared existing products and EMI plan templates");
 
-    await Promise.all([Product.deleteMany({}), EmiPlanTemplate.deleteMany({})]);
-    await Promise.all([
-      Product.insertMany(products),
-      EmiPlanTemplate.insertMany(emiPlanTemplates),
-    ]);
+  await Product.insertMany(products);
+  console.log(`Inserted ${products.length} products`);
 
-    console.log(`Seeded ${products.length} products and ${emiPlanTemplates.length} EMI plans.`);
-  } finally {
-    await mongoose.disconnect();
-  }
+  await EmiPlanTemplate.insertMany(emiPlanTemplates);
+  console.log(`Inserted ${emiPlanTemplates.length} EMI plan templates`);
+
+  await mongoose.disconnect();
+  console.log("Done. Disconnected.");
 }
 
-seed().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : "Unknown seeding error";
-  console.error(message);
-  process.exitCode = 1;
+seed().catch((err) => {
+  console.error(err);
+  process.exit(1);
 });

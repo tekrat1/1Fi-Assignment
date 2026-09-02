@@ -1,40 +1,30 @@
 import mongoose from "mongoose";
 
-type MongoCache = {
-  connection: typeof mongoose | null;
-  connectionPromise: Promise<typeof mongoose> | null;
+type MongooseCache = {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
 };
 
+// eslint-disable-next-line no-var
 declare global {
-  // eslint-disable-next-line no-var
-  var mongoCache: MongoCache | undefined;
+  var _mongooseCache: MongooseCache | undefined;
 }
 
-const cache: MongoCache = global.mongoCache ?? {
-  connection: null,
-  connectionPromise: null,
-};
-
-global.mongoCache = cache;
+const cached: MongooseCache = global._mongooseCache ?? { conn: null, promise: null };
+global._mongooseCache = cached;
 
 export async function connectDB() {
-  if (cache.connection) return cache.connection;
+  if (cached.conn) return cached.conn;
 
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    throw new Error("MONGODB_URI is not configured");
+  const MONGODB_URI = process.env.MONGODB_URI;
+  if (!MONGODB_URI) {
+    throw new Error("Please define the MONGODB_URI environment variable");
   }
 
-  if (!cache.connectionPromise) {
-    cache.connectionPromise = mongoose.connect(uri);
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(MONGODB_URI).then((m) => m);
   }
 
-  try {
-    cache.connection = await cache.connectionPromise;
-  } catch (error) {
-    cache.connectionPromise = null;
-    throw error;
-  }
-
-  return cache.connection;
+  cached.conn = await cached.promise;
+  return cached.conn;
 }

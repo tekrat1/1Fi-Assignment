@@ -1,3 +1,13 @@
+export interface ProductSummary {
+  slug: string;
+  name: string;
+  brand: string;
+  category: string;
+  heroImage: string;
+  variantCount: number;
+  startingPrice: number;
+}
+
 export interface EmiPlan {
   tenureMonths: number;
   interestRate: number;
@@ -18,7 +28,7 @@ export interface ProductVariant {
   emiPlans: EmiPlan[];
 }
 
-export interface ProductDetails {
+export interface ProductDetail {
   name: string;
   slug: string;
   brand: string;
@@ -27,14 +37,4 @@ export interface ProductDetails {
   heroImage: string;
   finishes: string[];
   variants: ProductVariant[];
-}
-
-export interface ProductSummary {
-  slug: string;
-  name: string;
-  brand: string;
-  category: string;
-  heroImage: string;
-  variantCount: number;
-  startingPrice: number;
 }
