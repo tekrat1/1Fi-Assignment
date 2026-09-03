@@ -17,3 +17,20 @@ body {
   background: #b8542e;
   color: #faf9f6;
 }
+
+/* Skeleton shimmer — used only by loading.tsx route skeletons, does not
+   affect any existing component or page. */
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f1efe8 25%, #e8e5db 37%, #f1efe8 63%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}

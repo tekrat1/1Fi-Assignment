@@ -185,4 +185,11 @@ Each variant stores a primary `image` plus an ordered `images` gallery array in 
 The product detail API returns those URLs to the client, so product-specific gallery images
 are not hardcoded in `ProductView.tsx`.
 
+## Notes for the demo video
 
+Good things to show in the 2–5 min walkthrough:
+1. Home page loading products and images from `/api/products`.
+2. A product page — switch variants, inspect multiple gallery images, switch EMI plans, click "Proceed".
+3. `GET /api/products/:slug` hit directly in the browser or Postman; show the `images` array.
+4. MongoDB Atlas collection view showing `products` and `emiplantemplates` documents.
+5. Quick look at `scripts/seed.ts` and the schema files to show it's DB-driven, not hardcoded.
