@@ -4,8 +4,8 @@ A full-stack product page that shows smartphones with EMI plans backed by mutual
 Product, pricing, image galleries and EMI data live in MongoDB and are served through Next.js
 API routes — the frontend does not contain product-specific image URLs or product records.
 
-Live demo: _add your deployed link here_
-Demo video: _add your video link here_
+Live demo: https://fairway-orpin-delta.vercel.app
+Demo video: https://youtu.be/-s3ldFy1IuI?si=zPMsFZLmB9zVqfLl
 
 ## Tech stack
 
